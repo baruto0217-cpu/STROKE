@@ -143,6 +143,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN',sa
       </div>
     </div>
     <div class="card">
+      <div class="ch">🧩 専門評価</div>
+      <div class="cb">
+        <div class="srow" onclick="showDetail('cerebellar')">
+          <div class="sico" style="background:#f0ebff">🎯</div>
+          <div class="si">
+            <div class="sn">小脳失調テスト</div>
+            <div class="sw">めまい・ふらつき・運動失調がある時</div>
+            <div class="sd">指鼻試験・踵膝試験・ジアドコキネーシス・Romberg試験・眼振・断綴性言語の6項目。後方循環系脳卒中の評価に有用。</div>
+            <div class="ss undone" id="st-cerebellar">未実施</div>
+          </div>
+          <span class="chevron">›</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
       <div class="ch">意識・重症度</div>
       <div class="cb">
         <div class="srow" onclick="showDetail('gcs')">
@@ -341,7 +356,15 @@ const SC={
       {v:2,t:'2: 軽度障害（一部介助・自力歩行可）'},{v:3,t:'3: 中等度障害（介助要・自力歩行可）'},
       {v:4,t:'4: やや高度障害（自力歩行不可）'},{v:5,t:'5: 高度障害（寝たきり）'},
     ]},
-  ],type:'single',interp:(s)=>s<=1?{t:'良好（血栓回収適応基準内）',c:'low'}:s<=3?{t:'中等度障害（血栓回収適応外の可能性）',c:'mid'}:{t:'高度障害（要介護・適応慎重判断）',c:'high'}}
+  ],type:'single',interp:(s)=>s<=1?{t:'良好（血栓回収適応基準内）',c:'low'}:s<=3?{t:'中等度障害（血栓回収適応外の可能性）',c:'mid'}:{t:'高度障害（要介護・適応慎重判断）',c:'high'}},
+  cerebellar:{name:'小脳失調テスト',memo:'小脳・後方循環系病変の評価に使用。複数の検査で異常がある場合は小脳梗塞・出血を強く疑い、椎骨脳底動脈系のELVO（後方循環型）として対応を検討する。',tests:[
+    {id:'finger_nose',   label:'指鼻試験',      sub:'「私の指を触って→自分の鼻を触って」を繰り返させる。測定障害・企図振戦の有無を観察',    opts:[{v:0,t:'正常（なめらか）'},{v:1,t:'軽度異常（ぎこちない・わずかに振戦）'},{v:2,t:'重度異常（著明な測定障害・企図振戦）'}]},
+    {id:'heel_knee',     label:'踵膝試験',      sub:'仰臥位で踵を反対側の膝に当て、脛の上をゆっくり滑らせる。ふらつき・偏位の有無を確認',    opts:[{v:0,t:'正常'},{v:1,t:'軽度異常（やや偏位する）'},{v:2,t:'重度異常（著明に偏位・実行困難）'}]},
+    {id:'diadochokinesis',label:'反復拮抗運動\n（ジアドコキネーシス）',sub:'手の甲と手のひらを素早く交互に膝に打ち付けさせる。速度・リズムの乱れを観察',opts:[{v:0,t:'正常（左右均等・リズム一定）'},{v:1,t:'軽度異常（一側または両側でぎこちない）'},{v:2,t:'重度異常（著明な不規則・実行困難）'}]},
+    {id:'romberg',       label:'Romberg試験',   sub:'両足をそろえて直立させ、開眼→閉眼で動揺を比較。閉眼で著明に悪化すれば陽性（後索障害）。小脳性は開眼でも動揺あり', opts:[{v:0,t:'正常（閉眼でも安定）'},{v:1,t:'閉眼で軽度動揺（感覚性失調疑い）'},{v:2,t:'開眼でも動揺あり（小脳性失調疑い）'},{v:3,t:'閉眼で転倒（Romberg陽性）'}]},
+    {id:'nystagmus',     label:'眼振',          sub:'患者の眼を正面・左右・上下に追わせ、眼振（眼球が規則的に揺れる動き）の有無を観察する',    opts:[{v:0,t:'なし'},{v:1,t:'水平眼振あり'},{v:2,t:'垂直眼振あり（中枢性を強く疑う）'},{v:3,t:'回旋眼振あり（中枢性を疑う）'}]},
+    {id:'dysarthria',    label:'断綴性言語\n（小脳性構音障害）',sub:'「パパ・ピピ・ポポ」や長い文章を発話させる。爆発性・断綴性・スキャン言語の有無を確認',opts:[{v:0,t:'正常'},{v:1,t:'軽度異常（ぎこちない・単調）'},{v:2,t:'重度異常（爆発性・断綴性が明確）'}]},
+  ]}
 };
 
 let curKey=null,curAns={};
@@ -389,6 +412,91 @@ const GCS_PED = {
 
 // 現在のGCSタブ（'adult' or 'ped'）
 let gcsTab = 'adult';
+
+function showCerebellarDetail(){
+  const sc = SC['cerebellar'];
+  curAns = ST.scores['cerebellar'] || {};
+  const tot = Object.values(curAns).reduce((s,v)=>s+v,0);
+  const done = Object.keys(curAns).length;
+  const total_tests = sc.tests.length;
+
+  // 解釈
+  let ip = null;
+  if(done > 0){
+    const abnormal = Object.values(curAns).filter(v=>v>0).length;
+    ip = abnormal === 0 ? {t:'全項目正常',c:'low'}
+       : abnormal <= 2  ? {t:`${abnormal}項目で異常（小脳病変疑い）`,c:'mid'}
+       :                  {t:`${abnormal}項目で異常（小脳病変を強く疑う）`,c:'high'};
+  }
+
+  let h = `<div class="ptitle">小脳失調テスト</div>`;
+  h += `<div class="memo">${sc.memo}</div>`;
+
+  // 進捗
+  h += `<div class="card"><div class="cb" style="padding:12px 16px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+      <span style="font-size:12px;color:#636366">実施済み ${done}/${total_tests}項目</span>
+      <span style="font-size:12px;font-weight:600">異常 ${Object.values(curAns).filter(v=>v>0).length}項目</span>
+    </div>
+    <div class="pbar"><div class="pfill" style="width:${Math.round(done/total_tests*100)}%"></div></div>
+  </div></div>`;
+
+  h += `<div class="card"><div class="cb" style="padding:4px 16px">`;
+  sc.tests.forEach(t=>{
+    const label = t.label.replace(/\n/g,'／');
+    const sel = curAns[t.id];
+    h += `<div class="nrow">
+      <div class="nq">${label}</div>
+      <div style="font-size:11px;color:#636366;margin-bottom:7px;line-height:1.5;background:#f9f9f9;border-radius:6px;padding:6px 8px">📋 ${t.sub}</div>
+      <div class="nopts">`;
+    t.opts.forEach(o=>{
+      const isAbnormal = o.v > 0;
+      const isSel = sel === o.v;
+      h += `<div class="no${isSel?' sel':''}" onclick="setCerebellar('${t.id}',${o.v})">
+        <span>${isAbnormal ? '⚠️ ' : '✅ '}${o.t}</span>
+        <span class="ns">${o.v > 0 ? '異常' : '正常'}</span>
+      </div>`;
+    });
+    h += `</div></div>`;
+  });
+  h += `</div></div>`;
+
+  if(ip){
+    // 異常項目サマリー
+    const abnItems = sc.tests.filter(t=>curAns[t.id]>0).map(t=>{
+      const opt = t.opts.find(o=>o.v===curAns[t.id]);
+      return `${t.label.replace(/\n/g,'／')}: ${opt?opt.t:''}`;
+    });
+    h += `<div class="card"><div class="cb" style="padding:12px 16px">
+      <div class="scorebox">
+        <div>
+          <div class="slbl">小脳失調テスト</div>
+          <div class="snum" style="color:var(--red)">${Object.values(curAns).filter(v=>v>0).length}<span style="font-size:16px;font-weight:400">／${total_tests}異常</span></div>
+        </div>
+        <span class="badge ${ip.c}">${ip.t}</span>
+      </div>
+      ${abnItems.length ? `<div style="margin-top:10px;font-size:11px;color:#636366;line-height:1.8">異常項目：${abnItems.join('・')}</div>` : ''}
+    </div></div>`;
+
+    // 眼振の垂直・回旋は中枢性の強い示唆
+    if(curAns['nystagmus']>=2){
+      h += `<div class="alrt ared">⚠️ 垂直または回旋眼振あり：中枢性（脳幹・小脳）病変を強く示唆。脳卒中との鑑別を優先してください。</div>`;
+    }
+  }
+
+  document.getElementById('scr-detail').innerHTML = h;
+  document.getElementById('scr-detail').style.display = '';
+  document.getElementById('scr-list').style.display = 'none';
+  document.getElementById('backBtn').classList.add('on');
+}
+
+function setCerebellar(id, v){
+  if(!ST.scores.cerebellar) ST.scores.cerebellar={};
+  ST.scores.cerebellar[id]=v;
+  curAns=ST.scores.cerebellar;
+  updSt();saveState();
+  showCerebellarDetail();
+}
 
 function showGcsDetail(){
   const sc = SC['gcs'];
@@ -473,6 +581,7 @@ function setGcs(id, v){
 function showDetail(key){
   curKey=key;
   if(key==='gcs'){ showGcsDetail(); return; }
+  if(key==='cerebellar'){ showCerebellarDetail(); return; }
   const sc=SC[key];curAns=ST.scores[key]||{};
   let h=`<div class="ptitle">${sc.name}</div>`;
   if(sc.memo) h+=`<div class="memo">${sc.memo}</div>`;
@@ -759,6 +868,14 @@ function updSt(){
     const el=document.getElementById('st-'+k);if(!el) return;
     const a=ST.scores[k]||{};const sc=SC[k];
     if(!Object.keys(a).length){el.textContent='未実施';el.className='ss undone';return;}
+    // 小脳失調テスト専用表示
+    if(k==='cerebellar'){
+      const abnormal=Object.values(a).filter(v=>v>0).length;
+      const done=Object.keys(a).length;
+      el.textContent=`✓ ${done}/${sc.tests.length}項目実施・異常${abnormal}項目`;
+      el.className='ss '+(abnormal>0?'done':'undone');
+      return;
+    }
     let s=(k==='gcs'||k==='kcs')?((a.eye||1)+(a.verbal||1)+(a.motor||1)):calcScore(k);
     el.textContent=`✓ ${s}点 — ${sc.interp(s).t}`;el.className='ss done';
   });
